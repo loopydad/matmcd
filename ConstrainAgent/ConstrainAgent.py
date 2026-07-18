@@ -4,18 +4,11 @@ from typing import List, Tuple, Dict
 import numpy as np
 from tqdm import tqdm
 
-from Client.KimiClient import KimiClient
-from Client.LlamaClient import LlamaClient
-from Client.MistralClient import MistralClient
 from Client.OpenAiClient import OpenAIClient
 from Client.ReactClient import ReactClient
-from config import (
-    KIMI_API_KEY,
-    LLAMA_API_KEY,
-    MISTRAL_API_KEY,
-    MODEL,
-    OPENAI_API_KEY,
-)
+from Client.MistralClient import MistralClient
+from Client.LlamaClient import LlamaClient
+from config import MODEL, OPENAI_API_KEY, MISTRAL_API_KEY, LLAMA_API_KEY
 
 from .LLMs import (
     ConstrainLLM,
@@ -25,20 +18,6 @@ from .LLMs import (
     ConstrainJudgerLLM,
     ConstrainReasoningLLM,
 )
-
-
-def create_llm_client():
-    """Create the configured provider client for every MATMCD agent path."""
-    model_name = MODEL.lower()
-    if "gpt" in model_name:
-        return OpenAIClient(OPENAI_API_KEY, MODEL)
-    if "mistral" in model_name:
-        return MistralClient(MISTRAL_API_KEY, MODEL)
-    if "llama" in model_name or "gemma" in model_name:
-        return LlamaClient(LLAMA_API_KEY, MODEL)
-    if "kimi" in model_name:
-        return KimiClient(KIMI_API_KEY, MODEL)
-    raise ValueError(f"Unsupported MODEL in config.py: {MODEL}")
 
 
 class ConstrainAgent:
@@ -94,7 +73,12 @@ class ConstrainNormalAgent(ConstrainAgent):
         self.node_num = len(self.label)
         self.use_reasoning = use_reasoning
         # Initialize LLM for generating domain knowledge about causal relationships
-        client = create_llm_client()
+        if "gpt" in MODEL:
+            client = OpenAIClient(OPENAI_API_KEY, MODEL)
+        elif "mistral" in MODEL:
+            client = MistralClient(MISTRAL_API_KEY, MODEL)
+        elif "llama" in MODEL or "gemma" in MODEL:
+            client = LlamaClient(LLAMA_API_KEY, MODEL)
 
         self.domain_knowledge_LLM = DomainKnowledgeLLM(
             client,
@@ -209,7 +193,12 @@ class ConstrainNormalAgent(ConstrainAgent):
 
         # Initialize LLM for converting domain knowledge into constraint matrix
         #! Must put here, otherwise the domain knowledge dict is empty
-        client = create_llm_client()
+        if "gpt" in MODEL:
+            client = OpenAIClient(OPENAI_API_KEY, MODEL)
+        elif "mistral" in MODEL:
+            client = MistralClient(MISTRAL_API_KEY, MODEL)
+        elif "llama" in MODEL or "gemma" in MODEL:
+            client = LlamaClient(LLAMA_API_KEY, MODEL)
         if self.use_reasoning:
             self.constrain_LLM = ConstrainReasoningLLM(
                 client,
@@ -310,7 +299,11 @@ class ConstrainDebateAgent(ConstrainAgent):
             for j in range(self.node_num)
             if i != j
         }
-        client = create_llm_client()
+        if "gpt" in MODEL:
+            print("Use GPT")
+            client = OpenAIClient(OPENAI_API_KEY, MODEL)
+        elif "mistral" in MODEL:
+            client = MistralClient(MISTRAL_API_KEY, MODEL)
 
         self.positive_domain_knowledge_LLM = PositiveDomainKnowledgeLLM(
             client,
@@ -418,7 +411,7 @@ class ConstrainDebateAgent(ConstrainAgent):
                 )
 
                 self.constrain_judger_LLM = ConstrainJudgerLLM(
-                    create_llm_client(),
+                    OpenAIClient(OPENAI_API_KEY, MODEL),
                     self.theme,
                     self.debating_memories,
                 )
@@ -457,7 +450,7 @@ class ConstrainDebateAgent(ConstrainAgent):
             desc="Generating constraint matrix",
         ):
             self.constrain_judger_LLM = ConstrainJudgerLLM(
-                create_llm_client(),
+                OpenAIClient(OPENAI_API_KEY, MODEL),
                 self.theme,
                 self.debating_memories,
             )
@@ -786,7 +779,7 @@ class OnlyLLMAgent(ConstrainAgent):
         self.node_information = node_information
         self.graph_matrix = graph_matrix
         self.causal_discovery_algorithm = causal_discovery_algorithm
-        self.client = create_llm_client()
+        self.client = OpenAIClient(OPENAI_API_KEY, MODEL)
 
         self.node_num = len(self.label)
         self.use_reasoning = use_reasoning
